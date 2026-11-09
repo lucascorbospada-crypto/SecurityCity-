@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080e1b">
+<title>NextBag | Rastreador</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+:root{color-scheme:dark;--bg:#080e1b;--panel:#111c2d;--panel2:#16243a;--border:#263852;--text:#f2f6ff;--muted:#91a2bb;--blue:#4b8dff;--cyan:#39d6ce;--green:#42d6a0;--red:#ff7180}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 85% -10%,#1b3760 0,transparent 38%),var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+header{height:76px;padding:0 clamp(16px,4vw,48px);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:#091221eF;position:sticky;top:0;z-index:500}
+.brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:850;letter-spacing:-.5px}.logo{width:39px;height:39px;border-radius:13px;background:linear-gradient(135deg,var(--blue),var(--cyan));display:grid;place-items:center;color:#071321;font-weight:950}
+.connection{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px}.led{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 12px currentColor}
+main{max-width:1240px;margin:auto;padding:30px clamp(14px,4vw,48px) 48px}.heading{display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:22px}h1{font-size:clamp(24px,3vw,32px);letter-spacing:-.8px;margin:0}.subtitle{color:var(--muted);margin:5px 0 0;font-size:13px}
+.actions{display:flex;gap:9px;flex-wrap:wrap}.btn{border:0;border-radius:11px;padding:11px 16px;background:linear-gradient(100deg,var(--blue),#3675df);color:white;font-weight:750;cursor:pointer}.btn.secondary{background:#1a2b44;border:1px solid #3b506e}.btn:disabled{opacity:.45;cursor:not-allowed}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}.card{background:linear-gradient(145deg,#142238,#101a2a);border:1px solid var(--border);border-radius:16px;padding:17px;min-width:0}.metric-label{font-size:12px;color:var(--muted)}.metric-value{font-size:24px;font-weight:800;letter-spacing:-.5px;margin-top:7px;overflow-wrap:anywhere}.metric-note{font-size:11px;color:var(--muted);margin-top:3px}
+.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(270px,.8fr);gap:14px;margin-top:15px}.map-card{padding:17px}.card-title{font-size:16px;font-weight:750;margin:0 0 13px;display:flex;align-items:center;justify-content:space-between;gap:10px}.tag{font-size:10px;letter-spacing:.6px;color:#7ce9c0;background:#10342e;border:1px solid #245b4d;border-radius:30px;padding:5px 9px;white-space:nowrap}#map{height:370px;border-radius:12px;overflow:hidden;background:#15253a}.side .row{display:flex;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}.side .row:last-of-type{border:0}.ico{width:40px;height:40px;border-radius:12px;background:#1b3150;display:grid;place-items:center;font-size:19px}.rowtext{flex:1;min-width:0}.rowtext b{display:block;font-size:13px}.rowtext small{display:block;color:var(--muted);font-size:11px}.history{margin-top:15px}.history-list{max-height:190px;overflow:auto}.history-item{padding:10px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:12px}.history-item b{color:var(--text);font-weight:600}.empty{color:var(--muted);font-size:13px;padding:12px 0}.alert{margin-top:15px;padding:12px 14px;border-radius:12px;background:#2c2518;border:1px solid #66552c;color:#f4dda7;font-size:12px}.error{background:#321c25;border-color:#693341;color:#ffc2cb}.success{background:#103027;border-color:#245b4d;color:#a8f2d5}.leaflet-container{font:12px system-ui}
+@media(max-width:900px){.metrics{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}}
+@media(max-width:560px){header{height:66px}.heading{align-items:flex-start;flex-direction:column}.actions{width:100%}.actions .btn{flex:1}#map{height:300px}.metric-value{font-size:21px}.card{padding:14px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="logo">N</div>NextBag</div>
+  <div class="connection"><span class="led" id="led"></span><span id="connectionText">Desconectado</span></div>
+</header>
+<main>
+  <section class="heading">
+    <div><h1>Rastreamento da bagagem</h1><p class="subtitle">Acompanhe a posição do seu dispositivo NextBag.</p></div>
+    <div class="actions">
+      <button class="btn" id="connectBtn">Conectar rastreador</button>
+      <button class="btn secondary" id="disconnectBtn" disabled>Desconectar</button>
+    </div>
+  </section>
+
+  <section class="metrics">
+    <article class="card"><div class="metric-label">Latitude</div><div class="metric-value" id="latitude">—</div><div class="metric-note">Coordenada recebida do GPS</div></article>
+    <article class="card"><div class="metric-label">Longitude</div><div class="metric-value" id="longitude">—</div><div class="metric-note">Coordenada recebida do GPS</div></article>
+    <article class="card"><div class="metric-label">Satélites</div><div class="metric-value" id="satellites">—</div><div class="metric-note">Satélites informados pelo módulo</div></article>
+    <article class="card"><div class="metric-label">Bateria</div><div class="metric-value" id="battery">Não disponível</div><div class="metric-note">Requer leitura de bateria enviada pelo ESP32</div></article>
+  </section>
+
+  <section class="layout">
+    <article class="card map-card">
+      <h2 class="card-title">Mapa <span class="tag" id="gpsTag">AGUARDANDO GPS</span></h2>
+      <div id="map" aria-label="Mapa da localização do rastreador"></div>
+      <p class="metric-note" id="mapMessage">O mapa será centralizado quando uma coordenada GPS válida chegar.</p>
+    </article>
+    <aside class="card side">
+      <h2 class="card-title">Estado do rastreador</h2>
+      <div class="row"><div class="ico">🎒</div><div class="rowtext"><b id="deviceName">NextBag-ESP32</b><small>Dispositivo Bluetooth</small></div></div>
+      <div class="row"><div class="ico">📶</div><div class="rowtext"><b id="bleState">Desconectado</b><small>Conexão BLE</small></div></div>
+      <div class="row"><div class="ico">🛰️</div><div class="rowtext"><b id="gpsState">Sem posição</b><small>Recepção GPS</small></div></div>
+      <div class="row"><div class="ico">🕒</div><div class="rowtext"><b id="lastUpdate">—</b><small>Última atualização</small></div></div>
+      <div class="alert" id="compatibility"><b>Compatibilidade:</b> Web Bluetooth exige HTTPS e navegador compatível (Chrome no Android ou computador). Safari no iPhone não oferece Web Bluetooth.</div>
+    </aside>
+  </section>
+
+  <section class="card history">
+    <h2 class="card-title">Histórico desta sessão <button class="btn secondary" id="clearHistory" style="font-size:11px;padding:7px 10px">Limpar</button></h2>
+    <div id="historyList" class="history-list"><div class="empty">Nenhuma localização recebida ainda.</div></div>
+  </section>
+  <div class="alert" id="message"><b>Como funciona:</b> conecte o rastreador BLE. O ESP32 deve enviar uma linha JSON por notificação, por exemplo: {"lat":-23.55,"lon":-46.63,"sats":7,"battery_pct":null}.</div>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+(() => {
+  'use strict';
+  const UUID = {
+    service: '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+    tx:      '6e400003-b5a3-f393-e0a9-e50e24dcca9e'
+  };
+  const $ = id => document.getElementById(id);
+  let device = null, txCharacteristic = null, buffer = '', marker = null, line = null;
+  const positions = [];
+  const map = L.map('map').setView([-15.78,-47.93],4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19, attribution:'&copy; OpenStreetMap'
+  }).addTo(map);
+
+  function setConnected(connected) {
+    $('connectionText').textContent = connected ? 'Conectado' : 'Desconectado';
+    $('led').style.background = connected ? 'var(--green)' : 'var(--red)';
+    $('connectBtn').disabled = connected;
+    $('disconnectBtn').disabled = !connected;
+    $('bleState').textContent = connected ? 'Conectado' : 'Desconectado';
+  }
+  function showMessage(message, type='') {
+    const box = $('message');
+    box.className = 'alert' + (type ? ' ' + type : '');
+    box.textContent = message;
+  }
+  function addHistory(lat, lon, time) {
+    const list = $('historyList');
+    if (!positions.length) list.innerHTML = '';
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const left = document.createElement('b');
+    left.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    const right = document.createElement('span');
+    right.textContent = time;
+    item.append(left,right);
+    list.prepend(item);
+  }
+  function handlePacket(raw) {
+    let data;
+    try { data = JSON.parse(raw.trim()); } catch { return; }
+    const lat = Number(data.lat), lon = Number(data.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat)>90 || Math.abs(lon)>180 || (lat===0 && lon===0)) return;
+
+    const point = [lat,lon], now = new Date().toLocaleTimeString('pt-BR');
+    $('latitude').textContent = lat.toFixed(6);
+    $('longitude').textContent = lon.toFixed(6);
+    $('satellites').textContent = data.sats == null ? '—' : String(data.sats);
+    $('battery').textContent = data.battery_pct == null ? 'Não disponível' : `${data.battery_pct}%`;
+    $('lastUpdate').textContent = now;
+    $('gpsState').textContent = data.valid === false ? 'Coordenada recebida' : 'Posição recebida';
+    $('gpsTag').textContent = 'GPS RECEBIDO';
+    $('gpsTag').className = 'tag';
+    $('mapMessage').textContent = `Última posição recebida às ${now}.`;
+    positions.push(point);
+    if (positions.length > 300) positions.shift();
+    if (!marker) marker = L.marker(point).addTo(map).bindPopup('Localização da NextBag');
+    else marker.setLatLng(point);
+    if (!line) line = L.polyline(positions,{color:'#39d6ce',weight:4}).addTo(map);
+    else line.setLatLngs(positions);
+    map.setView(point,16);
+    addHistory(lat,lon,now);
+  }
+  function onNotification(event) {
+    buffer += new TextDecoder().decode(event.target.value);
+    const packets = buffer.split('\n');
+    buffer = packets.pop().slice(-4096);
+    packets.forEach(handlePacket);
+  }
+  async function connect() {
+    if (!window.isSecureContext) {
+      showMessage('Para usar Bluetooth, publique/abra este site em HTTPS (ou localhost durante testes).','error');
+      return;
+    }
+    if (!navigator.bluetooth) {
+      showMessage('Este navegador não oferece Web Bluetooth. Use Chrome no Android ou em um computador compatível. Safari no iPhone não é compatível.','error');
+      return;
+    }
+    try {
+      showMessage('Escolha o dispositivo NextBag-ESP32 na janela do navegador.');
+      device = await navigator.bluetooth.requestDevice({filters:[{services:[UUID.service]}]});
+      device.addEventListener('gattserverdisconnected', () => {
+        setConnected(false);
+        txCharacteristic = null;
+        showMessage('O rastreador foi desconectado.','error');
+      });
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(UUID.service);
+      txCharacteristic = await service.getCharacteristic(UUID.tx);
+      await txCharacteristic.startNotifications();
+      txCharacteristic.addEventListener('characteristicvaluechanged',onNotification);
+      $('deviceName').textContent = device.name || 'NextBag-ESP32';
+      setConnected(true);
+      showMessage('Conectado. Aguardando dados do GPS enviados pelo ESP32.','success');
+    } catch (error) {
+      console.error(error);
+      showMessage(`Não foi possível conectar: ${error.message || error}`,'error');
+    }
+  }
+  async function disconnect() {
+    if (device && device.gatt.connected) device.gatt.disconnect();
+    setConnected(false);
+  }
+  $('connectBtn').addEventListener('click',connect);
+  $('disconnectBtn').addEventListener('click',disconnect);
+  $('clearHistory').addEventListener('click',() => {
+    positions.length = 0;
+    $('historyList').innerHTML = '<div class="empty">Histórico desta sessão limpo.</div>';
+    if (line) { map.removeLayer(line); line = null; }
+  });
+  setConnected(false);
+})();
+</script>
+</body>
+</html>
